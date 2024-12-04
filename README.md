@@ -14,5 +14,4 @@ Mouse wheel - zoom
 S Key - Save
 L Key - Load
 
-## Demo Video
-https://raw.githubusercontent.com/w0rs3/MyInfiniteCanvas/main/demo.mp4
+Have fun!
