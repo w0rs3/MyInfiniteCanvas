@@ -9,9 +9,9 @@ Python script and demo data for infinite canvas painting
    ```python main.py```
 
 ## Controls
-Mouse left click - draw
-Mouse wheel - zoom
-S Key - Save
-L Key - Load
+Mouse left click - draw  
+Mouse wheel - zoom  
+S Key - Save  
+L Key - Load  
 
 Have fun!
