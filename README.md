@@ -1,9 +1,8 @@
 # MyInfiniteCanvas
-Python script and demo data for infinite canvas painting.  
-Only black and pensize depends on zoom level.
+python script and demo data for infinite canvas painting.
 
 ## Usage hint
-start it and start painting and zoom only out. When zooming far smaller then the initial zoom factor the quality drops, but zooming out works more or less infinite.
+start painting and zoom only out. When zooming far smaller then the initial zoom level the quality drops, but zooming out works more or less infinite as well as moving.
 
 ## Installation and start
 1. install python 3.11 (look that up and do it on your prefered way)
@@ -15,6 +14,6 @@ start it and start painting and zoom only out. When zooming far smaller then the
 ## Controls
 - Mouse left click - draw
 - Mouse wheel - zoom
-- Arrow Keys - Kamera Movement
+- Arrow Keys - Camera Movement
 - S Key - Save
-- L Key - Load  
+- L Key - Load
