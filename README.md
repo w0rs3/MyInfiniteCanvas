@@ -13,8 +13,8 @@ start it and start painting and zoom only out. When zooming far smaller then the
    ```python main.py```
 
 ## Controls
-Mouse left click - draw  
-Mouse wheel - zoom  
-Arrow Keys - Kamera Movement
-S Key - Save  
-L Key - Load  
+- Mouse left click - draw
+- Mouse wheel - zoom
+- Arrow Keys - Kamera Movement
+- S Key - Save
+- L Key - Load  
