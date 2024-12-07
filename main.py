@@ -28,7 +28,7 @@ current_color = BLACK
 
 # Auto-zoom settings
 auto_zoom = None
-zoom_speed = 1.05  # Adjust this value to change zoom speed
+zoom_speed = 1.005  # Adjust this value to change zoom speed
 
 # Color picker settings
 show_color_picker = False
