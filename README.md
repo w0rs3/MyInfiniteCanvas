@@ -8,8 +8,11 @@ There is a simple example already saved. When you start it first time just clikc
 ## Installation and start
 1. Install python 3.11 (look that up and do it on your prefered way)
 2. Install pygame 
-   ```pip install pygame==2.6.1```
-3. Run it
+   ```
+   pip install pygame==2.6.1
+   pip install pygame_gui-0.6.12
+   ```
+4. Run it
    ```python main.py```
 
 ## Controls
@@ -18,3 +21,6 @@ There is a simple example already saved. When you start it first time just clikc
 - Arrow Keys - Camera Movement
 - S Key - Save
 - L Key - Load
+- C Key - Color Picker
+- I Key - Auto Zoom In
+- O key - Auto Zoom Out
