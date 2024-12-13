@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MyInfiniteCanvas</title>
+    <style>
+        body { margin: 0; overflow: hidden; touch-action: none; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        #controls > * {
+            flex-grow: 1;
+            margin-right: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #controls > *:last-child {
+            margin-right: 0;
+        }
+        #colorPickerDialog {
+            display: none;
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            background: white;
+            border: 1px solid black;
+            padding: 10px;
+        }
+        .active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #arrowControls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        #arrowControls button {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            padding: 0;
+        }
+        #arrowUp { grid-column: 2; }
+        #arrowLeft { grid-column: 1; grid-row: 2; }
+        #arrowDown { grid-column: 2; grid-row: 2; }
+        #arrowRight { grid-column: 3; grid-row: 2; }
+        #stopButton {
+            display: none;
+            grid-column: 2;
+            grid-row: 2;
+            background-color: red;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+        <button id="colorPickerButton">Color</button>
+        <button id="saveButton">Save</button>
+        <button id="loadButton">Load</button>
+        <button id="zoomInButton">Zoom In</button>
+        <button id="zoomOutButton">Zoom Out</button>
+    </div>
+    <div id="colorPickerDialog">
+        <input type="color" id="colorPicker" value="#000000">
+        <button id="closeColorPicker">Close</button>
+    </div>
+    <div id="arrowControls">
+        <button id="arrowUp">↑</button>
+        <button id="arrowLeft">←</button>
+        <button id="arrowDown">↓</button>
+        <button id="arrowRight">→</button>
+        <button id="stopButton">⬛</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colorPickerButton = document.getElementById('colorPickerButton');
+        const colorPickerDialog = document.getElementById('colorPickerDialog');
+        const colorPicker = document.getElementById('colorPicker');
+        const closeColorPicker = document.getElementById('closeColorPicker');
+        const saveButton = document.getElementById('saveButton');
+        const loadButton = document.getElementById('loadButton');
+        const zoomInButton = document.getElementById('zoomInButton');
+        const zoomOutButton = document.getElementById('zoomOutButton');
+        const arrowUp = document.getElementById('arrowUp');
+        const arrowLeft = document.getElementById('arrowLeft');
+        const arrowDown = document.getElementById('arrowDown');
+        const arrowRight = document.getElementById('arrowRight');
+        const stopButton = document.getElementById('stopButton');
+
+        // Canvas settings
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+
+        // Drawing settings
+        let drawing = false;
+        let cameraX = 0, cameraY = 0;
+        let zoom = 0.01;
+        const brushSize = 5;
+        let currentColor = '#000000';
+
+        // Auto-zoom settings
+        let autoZoom = null;
+        const zoomSpeed = 1.005;
+
+        // Auto-move settings
+        let autoMoveX = 0;
+        let autoMoveY = 0;
+        const moveSpeed = 2;
+
+        // Data structure to store drawn points
+        let points = {};
+
+        // Store the last used file handle
+        let lastFileHandle = null;
+
+        function worldToScreen(x, y) {
+            const screenX = (x - cameraX) * zoom + canvas.width / 2;
+            const screenY = (y - cameraY) * zoom + canvas.height / 2;
+            return [screenX, screenY];
+        }
+
+        function screenToWorld(x, y) {
+            const worldX = (x - canvas.width / 2) / zoom + cameraX;
+            const worldY = (y - canvas.height / 2) / zoom + cameraY;
+            return [worldX, worldY];
+        }
+
+        function drawPoint(x, y) {
+            const zoomLevel = Math.floor(Math.log2(zoom));
+            points[`${zoomLevel},${Math.round(x)},${Math.round(y)}`] = currentColor;
+        }
+
+        function render() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const zoomLevel = Math.floor(Math.log2(zoom));
+            const visibleRange = 10;
+
+            const [minX, minY] = screenToWorld(0, 0);
+            const [maxX, maxY] = screenToWorld(canvas.width, canvas.height);
+
+            const centerX = cameraX, centerY = cameraY;
+
+            for (let level = zoomLevel - visibleRange; level <= zoomLevel + visibleRange; level++) {
+                for (const [key, color] of Object.entries(points)) {
+                    const [z, x, y] = key.split(',').map(Number);
+                    if (z === level && minX <= x && x <= maxX && minY <= y && y <= maxY) {
+                        const [screenX, screenY] = worldToScreen(x, y);
+
+                        const distance = Math.sqrt((x - centerX)**2 + (y - centerY)**2);
+
+                        const baseSize = brushSize * zoom / (2 ** Math.abs(level - zoomLevel));
+                        const distanceFactor = 1 / (1 + distance * 0.01 * zoom);
+                        const size = Math.max(1, baseSize * distanceFactor);
+
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        async function saveDrawing() {
+            const jsonString = JSON.stringify(points);
+            const blob = new Blob([jsonString], {type: 'application/json'});
+
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const options = {
+                        types: [{
+                            description: 'JSON Files',
+                            accept: {'application/json': ['.json']},
+                        }],
+                        suggestedName: 'MyInfiniteCanvasDrawing.json'
+                    };
+
+                    if (lastFileHandle) {
+                        options.startIn = lastFileHandle;
+                    }
+
+                    const handle = await window.showSaveFilePicker(options);
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    lastFileHandle = handle;
+                    console.log("Drawing saved!");
+                } catch (err) {
+                    console.error("Error saving file:", err);
+                }
+            } else {
+                // Fallback for unsupported browsers
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'MyInfiniteCanvasDrawing.json';
+                link.click();
+                URL.revokeObjectURL(link.href);
+                console.log("Drawing saved!");
+            }
+        }
+
+        async function loadDrawing() {
+            if ('showOpenFilePicker' in window) {
+                try {
+                    const options = {
+                        types: [{
+                            description: 'JSON Files',
+                            accept: {'application/json': ['.json']},
+                        }],
+                    };
+
+                    if (lastFileHandle) {
+                        options.startIn = lastFileHandle;
+                    }
+
+                    const [fileHandle] = await window.showOpenFilePicker(options);
+                    const file = await fileHandle.getFile();
+                    const contents = await file.text();
+                    points = JSON.parse(contents);
+                    lastFileHandle = fileHandle;
+                    console.log("Drawing loaded!");
+                } catch (err) {
+                    console.error("Error loading file:", err);
+                }
+            } else {
+                // Fallback for unsupported browsers
+                return new Promise((resolve, reject) => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.json';
+
+                    input.onchange = e => {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onload = readerEvent => {
+                            try {
+                                const content = readerEvent.target.result;
+                                points = JSON.parse(content);
+                                console.log("Drawing loaded!");
+                                resolve();
+                            } catch (err) {
+                                console.error("Error parsing file:", err);
+                                reject(err);
+                            }
+                        };
+                        reader.readAsText(file);
+                    };
+
+                    input.click();
+                });
+            }
+        }
+
+        function zoomCanvas(factor, centerX, centerY) {
+            const oldZoom = zoom;
+            zoom *= factor;
+
+            // Adjust camera position to keep the center point stationary
+            cameraX += (centerX - canvas.width / 2) * (1 / oldZoom - 1 / zoom);
+            cameraY += (centerY - canvas.height / 2) * (1 / oldZoom - 1 / zoom);
+        }
+
+        function toggleZoomMode(mode) {
+            if (autoZoom === mode) {
+                autoZoom = null;
+            } else {
+                autoZoom = mode;
+            }
+            updateZoomButtons();
+        }
+
+        function updateZoomButtons() {
+            zoomInButton.classList.toggle('active', autoZoom === 'in');
+            zoomOutButton.classList.toggle('active', autoZoom === 'out');
+        }
+
+        function toggleAutoMove(direction) {
+            if (direction === 'left' || direction === 'right') {
+                autoMoveX = (autoMoveX === 0) ? (direction === 'left' ? -1 : 1) : 0;
+            } else if (direction === 'up' || direction === 'down') {
+                autoMoveY = (autoMoveY === 0) ? (direction === 'up' ? -1 : 1) : 0;
+            }
+            updateArrowButtons();
+        }
+
+        function updateArrowButtons() {
+            arrowLeft.classList.toggle('active', autoMoveX < 0);
+            arrowRight.classList.toggle('active', autoMoveX > 0);
+            arrowUp.classList.toggle('active', autoMoveY < 0);
+            arrowDown.classList.toggle('active', autoMoveY > 0);
+            stopButton.style.display = (autoMoveX !== 0 && autoMoveY !== 0) ? 'block' : 'none';
+        }
+
+        function stopAutoMove() {
+            autoMoveX = 0;
+            autoMoveY = 0;
+            updateArrowButtons();
+        }
+
+        function startDrawing(e) {
+            drawing = true;
+            const [x, y] = screenToWorld(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY);
+            drawPoint(x, y);
+        }
+
+        function stopDrawing() {
+            drawing = false;
+        }
+
+        function draw(e) {
+            if (drawing) {
+                const [x, y] = screenToWorld(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY);
+                drawPoint(x, y);
+            }
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchmove', draw);
+
+        canvas.addEventListener('wheel', (e) => {
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            zoomCanvas(factor, canvas.width / 2, canvas.height / 2);
+            e.preventDefault();
+        });
+
+        window.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowLeft': toggleAutoMove('left'); break;
+                case 'ArrowRight': toggleAutoMove('right'); break;
+                case 'ArrowUp': toggleAutoMove('up'); break;
+                case 'ArrowDown': toggleAutoMove('down'); break;
+                case 's': saveDrawing(); break;
+                case 'l': loadDrawing(); break;
+                case 'i': toggleZoomMode('in'); break;
+                case 'o': toggleZoomMode('out'); break;
+            }
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+        });
+
+        colorPickerButton.addEventListener('click', () => {
+            colorPickerDialog.style.display = 'block';
+        });
+
+        closeColorPicker.addEventListener('click', () => {
+            colorPickerDialog.style.display = 'none';
+        });
+
+        saveButton.addEventListener('click', saveDrawing);
+        loadButton.addEventListener('click', loadDrawing);
+        zoomInButton.addEventListener('click', () => toggleZoomMode('in'));
+        zoomOutButton.addEventListener('click', () => toggleZoomMode('out'));
+
+        arrowUp.addEventListener('click', () => toggleAutoMove('up'));
+        arrowLeft.addEventListener('click', () => toggleAutoMove('left'));
+        arrowDown.addEventListener('click', () => toggleAutoMove('down'));
+        arrowRight.addEventListener('click', () => toggleAutoMove('right'));
+        stopButton.addEventListener('click', stopAutoMove);
+
+        function update() {
+            if (autoZoom === 'in') {
+                zoomCanvas(zoomSpeed, canvas.width / 2, canvas.height / 2);
+            } else if (autoZoom === 'out') {
+                zoomCanvas(1 / zoomSpeed, canvas.width / 2, canvas.height / 2);
+            }
+
+            cameraX += autoMoveX * moveSpeed / zoom;
+            cameraY += autoMoveY * moveSpeed / zoom;
+
+            requestAnimationFrame(update);
+        }
+
+        render();
+        update();
+    </script>
+</body>
+</html>
